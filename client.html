@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Sensor data visualization and analysis example</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		 <style>
+			body {
+				font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+			}
+
+			.graph .axis {
+				stroke-width: 1;
+			}
+
+			.graph .axis .tick line {
+				stroke: black;
+			}
+
+			.graph .axis .tick text {
+				fill: black;
+				font-size: 0.7em;
+			}
+
+			.graph .axis .domain {
+				fill: none;
+				stroke: black;
+			}
+
+			.graph .group {
+				fill: none;
+				stroke: black;
+				stroke-width: 1.5;
+			}
+        </style>
+	</head>
+	
+	<body>	
+	
+		<div class="graph"></div>
+		
+		<script src="https://d3js.org/d3.v6.js"></script>
+		<script src="lib/socketio/socket.io.js"></script>
+		
+				<script>
+				
+				
+				/////////////////////////////////////////////////////////////////////////////////
+				// Sensor data analytics example.
+				// Written by Vladeta Stojanovic (vladeta_stojanovic@yahoo.co.uk)
+				// Version: 091120_01
+				// License: MIT
+				/////////////////////////////////////////////////////////////////////////////////
+				
+				/////////////////////////////////////////////////////////////////////////////////
+				// Description: Client side visualization of the recieved sensor dausing D3.js
+				/////////////////////////////////////////////////////////////////////////////////
+				
+				//D3 ref: http://bl.ocks.org/simenbrekken/6634070
+				
+				//Client/server communication
+				var socket = io('ws://localhost:3000', {transports: ['websocket']});
+				
+				var sensor_0 = 0; //blood_sys
+				var sensor_1 = 0; //blood_dias
+				var sensor_2 = 0; //bmp
+				var sensor_3 = 0; //oxy_saturation
+				
+				function ConnectToServer()
+				{
+					socket.on('connect', function () 
+					{
+						console.log('connected!');
+						
+						ListenToServer();
+					});
+				}
+				
+				function RequestUpdate()
+				{
+					socket.emit('get_readings', 0); 
+				}
+				
+				function ListenToServer()
+				{
+					console.log("Listening for data...");
+					
+					socket.on ('status', function (msg) 
+					{
+						console.log("connection running");
+						
+					});
+					
+					socket.on ('send_sensor_data', function (msg) 
+					{
+						console.log("Recieved sensor data:");
+						console.log(msg);
+												
+						sensor_0 = msg.blood_sys;
+						sensor_1 = msg.blood_dias;
+						sensor_2 = msg.bmp;
+						sensor_3 = msg.oxy_saturation;
+					});
+				}
+				
+				///////////////////////////////////////////////////////
+				//D3 Visualization
+				//////////////////////////////////////////////////////
+				
+				function UpdateText()
+				{
+					d3.select("text.sensor_0_info").text('Systolic BP, mmHg: ' + sensor_0);
+					d3.select("text.sensor_1_info").text('Diastolic BP, mmHg: ' + sensor_1);
+					d3.select("text.sensor_2_info").text('Heart Rate, BMP: ' + sensor_2);
+					d3.select("text.sensor_3_info").text('Oxygen Saturation, SaO2: ' + sensor_3);
+				}
+				
+				var limit = 60 * 1, //Seconds 
+				duration = 750,
+				now = new Date(Date.now() - duration);
+
+				var margin = {top: 100, right: 10, bottom: 50, left: 60};
+				var width = 960 - margin.left - margin.right,
+				height = 500 - margin.top - margin.bottom;
+
+				var groups = {
+					blood_sys: {
+						value: 0,
+						color: 'red',
+						data: d3.range(limit).map(function() {
+							return 0
+						})
+					},
+					blood_dias: {
+						value: 0,
+						color: 'green',
+						data: d3.range(limit).map(function() {
+							return 0
+						})
+					},
+					bmp: {
+						value: 0,
+						color: 'blue',
+						data: d3.range(limit).map(function() {
+							return 0
+						})
+					},
+					oxy_saturation: {
+						value: 0,
+						color: 'orange',
+						data: d3.range(limit).map(function() {
+							return 0
+						})
+					}
+				}
+
+				var x = d3.scaleTime()
+					.domain([now - (limit - 2), now - duration])
+					.range([0, width])
+
+				var y = d3.scaleLinear()
+					.domain([0, 200])
+					.range([height, 0])
+
+				var line = d3.line()
+					.curve(d3.curveBasis) 
+					.x(function(d, i) {
+						return x(now - (limit - 1 - i) * duration)
+					})
+					.y(function(d) {
+						return y(d)
+					})
+
+				var svg = d3.select('.graph').append('svg')
+					.attr('class', 'chart')
+					.attr('width', width + margin.left + margin.right)
+					.attr('height', height + margin.top + margin.bottom)
+					.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+					
+				d3.select('.graph').attr("align","center"); 
+	
+			  // Add the x Axis
+			  var axis_x = svg.append("g")
+				  .attr("transform", "translate(0," + height + ")")
+				  .call(x.axis = d3.axisBottom(x));
+
+			  // text label for the x axis
+			  svg.append("text")             
+				  .attr("transform",
+						"translate(" + (width/2) + " ," + 
+									   (height + margin.bottom) + ")")
+				  .style("text-anchor", "middle")
+				  .text("Time - Seconds");
+					
+				
+				//y-axis	
+				svg.append("g").attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+				svg.append("g").call(d3.axisLeft(y));
+				
+				
+				//Add label for y axis				
+				 svg.append("text")
+					.attr("transform", "rotate(-90)")
+					.attr("y", 0 - 60)
+					.attr("x",0 - (height / 2))
+					.attr("dy", "1em")
+					.style("text-anchor", "middle")
+					.text("Sensor Value"); 
+					
+				//Info labels - these get updated every 1000ms in UpdateText()
+				var sensor_0_info = svg.append('text')
+					.attr('class', 'sensor_0_info')
+					.attr("transform", "translate(" + 100 + " ," + -50 + ")")
+					.style("text-anchor", "middle")
+					.style('fill', 'red')
+					.text('Systolic BP, mmHg: ' + sensor_0);
+					
+				var sensor_1_info = svg.append('text')
+					.attr('class', 'sensor_1_info')
+					.attr("transform", "translate(" + 300 + " ," + -50 + ")")
+					.style("text-anchor", "middle")
+					.style('fill', 'green')
+					.text('Diastolic BP, mmHg: ' + sensor_1);
+					
+				var sensor_2_info = svg.append('text')
+					.attr('class', 'sensor_2_info')
+					.attr("transform", "translate(" + 500 + " ," + -50 + ")")
+					.style("text-anchor", "middle")
+					.style('fill', 'blue')
+					.text('Heart Rate, BMP: ' + sensor_2);
+					
+				var sensor_3_info = svg.append('text')
+					.attr('class', 'sensor_3_info')
+					.attr("transform", "translate(" + 720 + " ," + -50 + ")")
+					.style("text-anchor", "middle")
+					.style('fill', 'orange')
+					.text('Oxygen Saturation, SaO2: ' + sensor_3);
+					
+				var paths = svg.append('g')
+
+				for (var name in groups) 
+				{
+					var group = groups[name]
+					group.path = paths.append('path')
+						.data([group.data])
+						.attr('class', name + ' group')
+						.style('stroke', group.color)
+				}
+						
+				//console.log(groups);
+				
+				function AnimateGraph() 
+				{
+					//console.log("Testing sensor values:")
+					//console.log(sensor_0, sensor_1, sensor_2, sensor_3)
+				
+					now = new Date()
+
+					// Add new values
+					groups.blood_sys.data.push(sensor_0)
+					groups.blood_sys.path.attr('d', line)
+					
+					groups.blood_dias.data.push(sensor_1)
+					groups.blood_dias.path.attr('d', line)
+					
+					groups.bmp.data.push(sensor_2)
+					groups.bmp.path.attr('d', line)
+					
+					groups.oxy_saturation.data.push(sensor_3)
+					groups.oxy_saturation.path.attr('d', line)
+
+					// Shift domain
+					x.domain([now - (limit - 2) * duration, now - duration])
+
+					// Slide x-axis left
+					axis_x.transition()
+						.duration(duration)
+						.ease(d3.easeLinear)
+						.call(x.axis)
+
+					// Slide paths left
+					paths.attr('transform', null)
+						.transition()
+						.duration(duration)
+						.ease(d3.easeLinear)
+						.attr('transform', 'translate(' + x(now - (limit - 1) * duration) + ')')
+						.on('end', AnimateGraph)
+
+					// Remove oldest data point from each group
+					groups.blood_sys.data.shift()
+					groups.blood_dias.data.shift()
+					groups.bmp.data.shift()
+					groups.oxy_saturation.data.shift()
+				}
+				
+				//Call everything in order
+				ConnectToServer();
+				setInterval(RequestUpdate, 1000);
+				setInterval(UpdateText, 1000);
+				AnimateGraph();
+
+					
+				</script>
+		
+	</body>
+	
+</html>
