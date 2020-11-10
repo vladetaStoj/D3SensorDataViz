@@ -179,18 +179,16 @@
 					
 				d3.select('.graph').attr("align","center"); 
 	
-			  // Add the x Axis
-			  var axis_x = svg.append("g")
-				  .attr("transform", "translate(0," + height + ")")
-				  .call(x.axis = d3.axisBottom(x));
+			  	// Add the x Axis
+			  	var axis_x = svg.append("g")
+				   .attr("transform", "translate(0," + height + ")")
+				   .call(x.axis = d3.axisBottom(x));
 
-			  // text label for the x axis
-			  svg.append("text")             
-				  .attr("transform",
-						"translate(" + (width/2) + " ," + 
-									   (height + margin.bottom) + ")")
-				  .style("text-anchor", "middle")
-				  .text("Time - Seconds");
+			  	// text label for the x axis
+			  	svg.append("text")             
+				   .attr("transform","translate(" + (width/2) + " ," + (height + margin.bottom) + ")")
+				   .style("text-anchor", "middle")
+				   .text("Time - Seconds");
 					
 				
 				//y-axis	
